@@ -6,13 +6,12 @@ const { v4: uuidv4 } = require('uuid');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const DB_PATH = process.env.DATABASE_URL || path.join(__dirname, 'edauys.sqlite');
+
+// Отказоустойчивый режим: если Render не дал диск, используем оперативную память (:memory:)
+const DB_PATH = process.env.DATABASE_URL || ':memory:';
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
-
-// Безопасное определение пути: если диска нет, уходим в in-memory режим
-const DB_PATH = process.env.DATABASE_URL || ':memory:';
 
 const db = new sqlite3.Database(DB_PATH, (err) => {
     if (err) {
@@ -53,7 +52,7 @@ db.serialize(() => {
         PRIMARY KEY(iin, poll_code)
     )`);
 
-    // Автоматическое добавление дефолтного админа при каждом старте памяти
+    // Добавление дефолтного администратора для тестов
     db.run(`INSERT OR IGNORE INTO admins (iin, email) VALUES ('123456789012', 'admin@e-dauys.kz')`);
 });
 
