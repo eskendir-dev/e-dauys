@@ -1,0 +1,23 @@
+{
+  "name": "e-dauys",
+  "version": "1.0.0",
+  "description": "Монолитная система электронного голосования на Vanilla JS и SQLite",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [
+    "voting",
+    "vanillajs",
+    "express",
+    "sqlite"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "sqlite3": "^5.1.7",
+    "uuid": "^10.0.0"
+  }
+}

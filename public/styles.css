@@ -1,0 +1,85 @@
+/* public/styles.css */
+:root {
+    --primary: #1a56db;
+    --primary-hover: #1e40af;
+    --bg: #f3f4f6;
+    --surface: #ffffff;
+    --text: #111827;
+    --border: #e5e7eb;
+    --error: #ef4444;
+}
+
+body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background-color: var(--bg);
+    color: var(--text);
+    margin: 0;
+    padding: 0;
+}
+
+.official-header {
+    background-color: var(--primary);
+    color: white;
+    padding: 1rem 2rem;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.official-header h1 { margin: 0; font-size: 24px; }
+.official-header p { margin: 5px 0 0; font-size: 14px; opacity: 0.9; }
+
+.view { display: none; padding: 2rem; max-width: 800px; margin: 0 auto; }
+.view.active { display: block; }
+.hidden { display: none !important; }
+
+.auth-box, .dashboard, .voting-interface {
+    background: var(--surface);
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+input, button {
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 15px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    box-sizing: border-box;
+    font-size: 16px;
+}
+
+button {
+    background-color: var(--bg);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    font-weight: 500;
+}
+
+button.primary-btn, button[id^="btn-"] {
+    background-color: var(--primary);
+    color: white;
+    border: none;
+}
+
+button:hover { background-color: var(--primary-hover); color: white; }
+
+.tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+.tabs button.active { background-color: var(--primary); color: white; }
+
+.question-block {
+    border: 1px solid var(--border);
+    padding: 15px;
+    margin-bottom: 15px;
+    border-radius: 6px;
+}
+
+.timer-box {
+    font-size: 20px;
+    font-weight: bold;
+    text-align: center;
+    margin-bottom: 20px;
+    color: var(--primary);
+}
+
+.disabled-layer { pointer-events: none; opacity: 0.6; }
