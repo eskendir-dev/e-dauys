@@ -7,75 +7,87 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <header class="official-header">
+    <header class="official-header" role="banner">
         <h1>e-Dauys</h1>
         <p>Национальная система электронного голосования</p>
     </header>
 
-    <main id="app-container">
-        <section id="view-auth" class="view active">
+    <main id="app-container" role="main">
+        <section id="view-auth" class="view active" aria-labelledby="auth-title">
             <div class="auth-box">
-                <h2>Вход в систему</h2>
-                <div class="tabs">
-                    <button id="tab-voter" class="active">Избиратель</button>
-                    <button id="tab-admin">Администратор</button>
+                <h2 id="auth-title">Вход в систему</h2>
+
+                <div class="tabs" role="tablist" aria-label="Выбор роли">
+                    <button id="tab-voter" class="active" type="button" role="tab" aria-selected="true">Избиратель</button>
+                    <button id="tab-admin" type="button" role="tab" aria-selected="false">Администратор</button>
                 </div>
                 
-                <div id="form-voter" class="auth-form">
-                    <input type="text" id="voter-code" placeholder="Код голосования">
-                    <input type="text" id="voter-iin" placeholder="Ваш ИИН (12 цифр)">
-                    <button id="btn-voter-auth">Получить код</button>
+                <div id="form-voter" class="auth-form" aria-label="Форма входа избирателя">
+                    <label for="voter-code">Код голосования</label>
+                    <input type="text" id="voter-code" placeholder="Код голосования" autocomplete="off">
+
+                    <label for="voter-iin">Ваш ИИН (12 цифр)</label>
+                    <input type="text" id="voter-iin" placeholder="Ваш ИИН (12 цифр)" inputmode="numeric" maxlength="12" autocomplete="off">
+
+                    <button id="btn-voter-auth" type="button">Получить код</button>
+
                     <div id="voter-otp-block" class="hidden">
-                        <input type="text" id="voter-otp" placeholder="Введите OTP">
-                        <button id="btn-voter-verify">Войти</button>
+                        <label for="voter-otp">Введите OTP</label>
+                        <input type="text" id="voter-otp" placeholder="Введите OTP" inputmode="numeric" autocomplete="one-time-code">
+                        <button id="btn-voter-verify" type="button">Войти</button>
                     </div>
                 </div>
 
-                <div id="form-admin" class="auth-form hidden">
-                    <input type="text" id="admin-iin" placeholder="ИИН Администратора">
-                    <button id="btn-admin-auth">Отправить запрос</button>
+                <div id="form-admin" class="auth-form hidden" aria-label="Форма входа администратора">
+                    <label for="admin-iin">ИИН Администратора</label>
+                    <input type="text" id="admin-iin" placeholder="ИИН Администратора" inputmode="numeric" maxlength="12" autocomplete="off">
+
+                    <button id="btn-admin-auth" type="button">Отправить запрос</button>
+
                     <div id="admin-otp-block" class="hidden">
-                        <input type="text" id="admin-otp" placeholder="Введите OTP из письма">
-                        <button id="btn-admin-verify">Авторизоваться</button>
+                        <label for="admin-otp">Введите OTP из письма</label>
+                        <input type="text" id="admin-otp" placeholder="Введите OTP из письма" autocomplete="one-time-code">
+                        <button id="btn-admin-verify" type="button">Авторизоваться</button>
                     </div>
                 </div>
             </div>
         </section>
 
-        <section id="view-admin" class="view hidden">
+        <section id="view-admin" class="view hidden" aria-labelledby="admin-title">
             <div class="dashboard">
                 <div class="dashboard-header">
-                    <h2>Панель управления</h2>
+                    <h2 id="admin-title">Панель управления</h2>
                     <div class="actions">
-                        <button id="btn-test-vote">Режим избирателя (Тест)</button>
-                        <button id="btn-logout">Выйти</button>
+                        <button id="btn-test-vote" type="button">Режим избирателя (Тест)</button>
+                        <button id="btn-logout" type="button">Выйти</button>
                     </div>
                 </div>
                 
                 <div class="constructor">
                     <h3>Конструктор формы</h3>
                     <div id="questions-container"></div>
-                    <button id="btn-add-question">+ Добавить вопрос</button>
+                    <button id="btn-add-question" type="button">+ Добавить вопрос</button>
                     
                     <div class="poll-settings">
-                        <label>Дата и время окончания:</label>
+                        <label for="poll-deadline">Дата и время окончания:</label>
                         <input type="datetime-local" id="poll-deadline">
                     </div>
                     
-                    <button id="btn-create-poll" class="primary-btn">Создать голосование</button>
-                    <div id="admin-message"></div>
+                    <button id="btn-create-poll" class="primary-btn" type="button">Создать голосование</button>
+                    <div id="admin-message" aria-live="polite"></div>
                 </div>
             </div>
         </section>
 
-        <section id="view-voting" class="view hidden">
+        <section id="view-voting" class="view hidden" aria-labelledby="voting-title">
             <div class="voting-interface">
+                <h2 id="voting-title" class="visually-hidden">Интерфейс голосования</h2>
                 <div class="timer-box">
                     Осталось времени: <span id="time-left">--:--:--</span>
                 </div>
                 <div id="poll-questions" class="poll-content"></div>
-                <button id="btn-submit-vote" class="primary-btn">Отправить голос</button>
-                <button id="btn-back-admin" class="hidden">Вернуться в админку</button>
+                <button id="btn-submit-vote" class="primary-btn" type="button">Отправить голос</button>
+                <button id="btn-back-admin" class="hidden" type="button">Вернуться в админку</button>
             </div>
         </section>
     </main>
