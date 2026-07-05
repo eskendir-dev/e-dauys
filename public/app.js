@@ -1,364 +1,259 @@
-// Основные элементы интерфейса
 const DOM = {
     views: {
         auth: document.getElementById('view-auth'),
         admin: document.getElementById('view-admin'),
         voting: document.getElementById('view-voting')
-    },
-    tabs: {
-        voter: document.getElementById('tab-voter'),
-        admin: document.getElementById('tab-admin')
-    },
-    forms: {
-        voter: document.getElementById('form-voter'),
-        admin: document.getElementById('form-admin')
     }
 };
 
-// Внутреннее состояние приложения
 const State = {
-    currentPoll: null,
-    voterIin: null,
-    timerInterval: null
+    currentPoll: null, voterIin: null, timerInterval: null
 };
 
-// Функция переключения глобальных экранов (SPA)
 function switchView(viewId) {
     Object.keys(DOM.views).forEach(key => {
-        const view = DOM.views[key];
-        if (key === viewId) {
-            view.classList.remove('hidden');
-            view.classList.add('active');
-        } else {
-            view.classList.add('hidden');
-            view.classList.remove('active');
-        }
+        DOM.views[key].classList.toggle('hidden', key !== viewId);
+        DOM.views[key].classList.toggle('active', key === viewId);
     });
 }
 
-// --- МОДУЛЬ АВТОРИЗАЦИИ И ТАБОВ ---
 const AuthModule = {
     init() {
-        // Проверка существующей сессии администратора
-        if (localStorage.getItem('adminToken')) {
-            switchView('admin');
-        }
+        if (localStorage.getItem('adminToken')) switchView('admin');
 
-        // Переключение табов роли
-        DOM.tabs.voter.onclick = () => this.switchTab('voter');
-        DOM.tabs.admin.onclick = () => this.switchTab('admin');
+        document.getElementById('tab-voter').onclick = () => this.toggleRole('voter');
+        document.getElementById('tab-admin').onclick = () => this.toggleRole('admin');
 
-        this.initAdminAuth();
-        this.initVoterAuth();
-    },
-
-    switchTab(role) {
-        const isVoter = role === 'voter';
-        
-        DOM.tabs.voter.classList.toggle('active', isVoter);
-        DOM.tabs.voter.setAttribute('aria-selected', isVoter);
-        DOM.tabs.admin.classList.toggle('active', !isVoter);
-        DOM.tabs.admin.setAttribute('aria-selected', !isVoter);
-
-        DOM.forms.voter.classList.toggle('hidden', !isVoter);
-        DOM.forms.admin.classList.toggle('hidden', isVoter);
-    },
-
-    initAdminAuth() {
-        const btnAuth = document.getElementById('btn-admin-auth');
-        const btnVerify = document.getElementById('btn-admin-verify');
-        const inputIin = document.getElementById('admin-iin');
-        const otpBlock = document.getElementById('admin-otp-block');
-        const inputOtp = document.getElementById('admin-otp');
-
-        btnAuth.onclick = async () => {
-            const iin = inputIin.value.trim();
-            if (iin.length !== 12) return alert('ИИН должен состоять из 12 цифр');
-
-            const res = await fetch('/api/admin/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ iin })
-            });
-
+        // Admin Auth
+        document.getElementById('btn-admin-auth').onclick = async () => {
+            const iin = document.getElementById('admin-iin').value;
+            const res = await fetch('/api/admin/login', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({iin}) });
             if (res.ok) {
-                // Скрытие первичных полей ввода
-                inputIin.classList.add('hidden');
-                DOM.forms.admin.querySelector('label[for="admin-iin"]').classList.add('hidden');
-                btnAuth.classList.add('hidden');
-                
-                // Отображение блока ввода OTP
-                otpBlock.classList.remove('hidden');
-            } else {
-                alert((await res.json()).error || 'Ошибка доступа');
-            }
+                document.getElementById('admin-iin').classList.add('hidden');
+                document.getElementById('btn-admin-auth').classList.add('hidden');
+                document.getElementById('admin-otp-block').classList.remove('hidden');
+            } else alert((await res.json()).error);
         };
 
-        btnVerify.onclick = async () => {
-            const iin = inputIin.value.trim();
-            const otp = inputOtp.value.trim();
-
-            const res = await fetch('/api/admin/verify', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ iin, otp })
-            });
+        document.getElementById('btn-admin-verify').onclick = async () => {
+            const res = await fetch('/api/admin/verify', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({
+                iin: document.getElementById('admin-iin').value,
+                otp: document.getElementById('admin-otp').value
+            })});
             const data = await res.json();
-
             if (data.token) {
                 localStorage.setItem('adminToken', data.token);
                 switchView('admin');
-            } else {
-                alert(data.error || 'Неверный код доступа');
-            }
+                AdminModule.loadPolls();
+            } else alert(data.error);
         };
-    },
 
-    initVoterAuth() {
-        const btnAuth = document.getElementById('btn-voter-auth');
-        const btnVerify = document.getElementById('btn-voter-verify');
-        const inputCode = document.getElementById('voter-code');
-        const inputIin = document.getElementById('voter-iin');
-        const otpBlock = document.getElementById('voter-otp-block');
-        const inputOtp = document.getElementById('voter-otp');
-
-        btnAuth.onclick = async () => {
-            const code = inputCode.value.trim().toUpperCase();
-            const iin = inputIin.value.trim();
-
-            if (!code || iin.length !== 12) return alert('Заполните код опроса и ИИН (12 цифр)');
-
-            const res = await fetch('/api/voter/auth', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ code, iin })
-            });
-
+        // Voter Auth
+        document.getElementById('btn-voter-auth').onclick = async () => {
+            const code = document.getElementById('voter-code').value;
+            const iin = document.getElementById('voter-iin').value;
+            const res = await fetch('/api/voter/auth', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({code, iin}) });
             if (res.ok) {
                 State.voterIin = iin;
-                
-                // Полное скрытие начальных элементов формы
-                inputCode.classList.add('hidden');
-                inputIin.classList.add('hidden');
-                btnAuth.classList.add('hidden');
-                DOM.forms.voter.querySelectorAll('label').forEach(lbl => lbl.classList.add('hidden'));
-
-                // Активация блока подтверждения
-                otpBlock.classList.remove('hidden');
-            } else {
-                alert((await res.json()).error || 'Ошибка авторизации');
-            }
+                document.getElementById('voter-code').classList.add('hidden');
+                document.getElementById('voter-iin').classList.add('hidden');
+                document.getElementById('btn-voter-auth').classList.add('hidden');
+                document.getElementById('voter-otp-block').classList.remove('hidden');
+            } else alert((await res.json()).error);
         };
 
-        btnVerify.onclick = async () => {
-            const code = inputCode.value.trim().toUpperCase();
-            const otp = inputOtp.value.trim();
-
-            const res = await fetch('/api/voter/verify', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ iin: State.voterIin, code, otp })
-            });
+        document.getElementById('btn-voter-verify').onclick = async () => {
+            const res = await fetch('/api/voter/verify', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({
+                iin: State.voterIin, code: document.getElementById('voter-code').value, otp: document.getElementById('voter-otp').value
+            })});
             const data = await res.json();
-
             if (data.poll) {
                 State.currentPoll = data.poll;
                 VotingModule.renderPoll();
-                switchView('view-voting');
-            } else {
-                alert(data.error || 'Неверный OTP-код');
-            }
+                switchView('voting');
+            } else alert(data.error);
         };
+    },
+    toggleRole(role) {
+        document.getElementById('tab-voter').classList.toggle('active', role === 'voter');
+        document.getElementById('tab-admin').classList.toggle('active', role === 'admin');
+        document.getElementById('form-voter').classList.toggle('hidden', role !== 'voter');
+        document.getElementById('form-admin').classList.toggle('hidden', role !== 'admin');
     }
 };
 
-// --- МОДУЛЬ АДМИНИСТРАТОРА (КОНСТРУКТОР) ---
 const AdminModule = {
     init() {
-        document.getElementById('btn-logout').onclick = () => {
-            localStorage.removeItem('adminToken');
-            window.location.reload();
-        };
-
-        document.getElementById('btn-add-question').onclick = () => this.addQuestionBlock();
-        document.getElementById('btn-create-poll').onclick = () => this.createPoll();
-
-        // Логика тестового переключения режима избирателя
+        document.getElementById('btn-logout').onclick = () => { localStorage.removeItem('adminToken'); window.location.reload(); };
         document.getElementById('btn-test-vote').onclick = () => {
             document.getElementById('btn-back-admin').classList.remove('hidden');
-            switchView('view-voting');
+            switchView('voting');
         };
-
         document.getElementById('btn-back-admin').onclick = () => {
             document.getElementById('btn-back-admin').classList.add('hidden');
-            switchView('view-admin');
+            switchView('admin');
         };
 
-        // Создаем первый обязательный вопрос при инициализации
-        this.addQuestionBlock();
+        // Admin Navigation
+        document.getElementById('nav-active').onclick = () => this.switchNav('active');
+        document.getElementById('nav-create').onclick = () => this.switchNav('create');
+
+        document.getElementById('btn-add-question').onclick = () => this.addCard();
+        document.getElementById('btn-create-poll').onclick = () => this.createPoll();
+
+        this.addCard(); // Init first card
+        if(localStorage.getItem('adminToken')) this.loadPolls();
     },
 
-    addQuestionBlock() {
-        const container = document.getElementById('questions-container');
-        const div = document.createElement('div');
-        div.className = 'question-block';
+    switchNav(tab) {
+        document.getElementById('nav-active').classList.toggle('active', tab === 'active');
+        document.getElementById('nav-create').classList.toggle('active', tab === 'create');
+        document.getElementById('subview-active').classList.toggle('hidden', tab !== 'active');
+        document.getElementById('subview-create').classList.toggle('hidden', tab !== 'create');
+        if(tab === 'active') this.loadPolls();
+    },
+
+    async loadPolls() {
+        const res = await fetch('/api/admin/polls', { headers: { 'Authorization': localStorage.getItem('adminToken') } });
+        if (!res.ok) return;
+        const data = await res.json();
+        const container = document.getElementById('active-polls-list');
+        container.innerHTML = data.polls.length ? '' : '<p>Нет активных голосований.</p>';
         
-        div.innerHTML = `
-            <input type="text" placeholder="Формулировка вопроса" class="q-title" style="margin-bottom: 0.5rem;" required>
-            <select class="q-type" style="margin-bottom: 0.5rem; width: 100%; padding: 0.5rem; border-radius: 4px; border: 1px solid #b6cae2;">
-                <option value="radio">Один вариант (Фиксированный выбор)</option>
-                <option value="text">Свободный развернутый ответ</option>
-            </select>
-            <div class="options-container">
-                <input type="text" value="ЗА" class="q-option" style="margin-bottom: 0.25rem;">
-                <input type="text" value="Против" class="q-option" style="margin-bottom: 0.25rem;">
-                <input type="text" value="Воздержался" class="q-option">
+        data.polls.forEach(poll => {
+            const status = Date.now() > poll.deadline ? '<span style="color:red">Завершен</span>' : '<span style="color:green">Активен</span>';
+            container.innerHTML += `
+                <div class="poll-item">
+                    <h3>Код доступа: ${poll.code}</h3>
+                    <p>Статус: ${status} | Дедлайн: ${new Date(poll.deadline).toLocaleString('ru-RU')}</p>
+                </div>
+            `;
+        });
+    },
+
+    addCard() {
+        const container = document.getElementById('questions-container');
+        const card = document.createElement('div');
+        card.className = 'gf-card';
+        card.innerHTML = `
+            <div class="gf-header">
+                <input type="text" placeholder="Вопрос без заголовка" class="q-title" required>
+                <select class="q-type">
+                    <option value="radio">Один из списка</option>
+                    <option value="text">Текст (абзац)</option>
+                </select>
+            </div>
+            <div class="gf-options">
+                <div class="gf-option-row">
+                    <span>○</span><input type="text" value="Вариант 1" class="q-option">
+                </div>
+            </div>
+            <button class="outline-btn btn-add-opt" style="width: auto; padding: 5px 10px; margin-top: 10px;">Добавить вариант</button>
+            <div style="text-align: right; margin-top: 15px; border-top: 1px solid #eee; padding-top: 10px;">
+                <button class="delete-btn btn-del-card">🗑 Удалить</button>
             </div>
         `;
 
-        // Динамическое скрытие вариантов ответа для текстового типа вопроса
-        div.querySelector('.q-type').onchange = (e) => {
-            div.querySelector('.options-container').style.display = e.target.value === 'text' ? 'none' : 'block';
+        card.querySelector('.q-type').onchange = (e) => {
+            card.querySelector('.gf-options').style.display = e.target.value === 'text' ? 'none' : 'flex';
+            card.querySelector('.btn-add-opt').style.display = e.target.value === 'text' ? 'none' : 'inline-block';
         };
 
-        container.appendChild(div);
+        card.querySelector('.btn-add-opt').onclick = () => {
+            const optDiv = document.createElement('div');
+            optDiv.className = 'gf-option-row';
+            optDiv.innerHTML = `<span>○</span><input type="text" placeholder="Новый вариант" class="q-option"><button class="delete-btn btn-del-opt">×</button>`;
+            optDiv.querySelector('.btn-del-opt').onclick = () => optDiv.remove();
+            card.querySelector('.gf-options').appendChild(optDiv);
+        };
+
+        card.querySelector('.btn-del-card').onclick = () => card.remove();
+        container.appendChild(card);
     },
 
     async createPoll() {
-        const blocks = document.querySelectorAll('.question-block');
-        const questions = Array.from(blocks).map(b => {
-            const type = b.querySelector('.q-type').value;
-            return {
-                title: b.querySelector('.q-title').value.trim(),
-                type: type,
-                options: type === 'text' ? [] : Array.from(b.querySelectorAll('.q-option')).map(o => o.value.trim()).filter(Boolean)
-            };
-        });
+        const dateVal = document.getElementById('poll-date').value;
+        const timeVal = document.getElementById('poll-time').value;
+        if (!dateVal || !timeVal) return alert('Укажите и дату, и время окончания');
+        const deadline = new Date(`${dateVal}T${timeVal}`).getTime();
 
-        const deadlineInput = document.getElementById('poll-deadline').value;
-        if (!deadlineInput) return alert('Установите время окончания голосования');
-
-        const deadline = new Date(deadlineInput).getTime();
-        const msgBlock = document.getElementById('admin-message');
+        const questions = Array.from(document.querySelectorAll('.gf-card')).map(card => ({
+            title: card.querySelector('.q-title').value.trim(),
+            type: card.querySelector('.q-type').value,
+            options: card.querySelector('.q-type').value === 'text' ? [] : Array.from(card.querySelectorAll('.q-option')).map(i => i.value.trim()).filter(Boolean)
+        }));
 
         const res = await fetch('/api/admin/polls', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': localStorage.getItem('adminToken')
-            },
+            headers: { 'Content-Type': 'application/json', 'Authorization': localStorage.getItem('adminToken') },
             body: JSON.stringify({ deadline, questions })
         });
 
-        const data = await res.json();
         if (res.ok) {
-            msgBlock.innerHTML = `<strong>Опрос успешно создан.</strong><br>Код доступа: <span style="font-size: 1.2rem; letter-spacing: 1px; color: var(--accent-ink);">${data.code}</span>`;
-            msgBlock.className = ""; // Удаление hidden
-        } else {
-            alert(data.error || 'Ошибка создания опроса');
+            const data = await res.json();
+            const msg = document.getElementById('admin-message');
+            msg.innerHTML = `Опрос создан! Код для избирателей: <b>${data.code}</b>`;
+            msg.classList.remove('hidden');
+            setTimeout(() => this.switchNav('active'), 2500);
         }
     }
 };
 
-// --- МОДУЛЬ ИЗБИРАТЕЛЯ (ОПРОСНЫЙ ЛИСТ) ---
 const VotingModule = {
     renderPoll() {
         const container = document.getElementById('poll-questions');
         container.innerHTML = '';
+        if (!State.currentPoll) return;
 
-        if (!State.currentPoll || !State.currentPoll.questions) return;
-
-        State.currentPoll.questions.forEach((q, qIndex) => {
-            const div = document.createElement('div');
-            div.className = 'question-block';
-            let html = `<h3 style="margin-bottom: 0.75rem;">${q.title}</h3>`;
-
+        State.currentPoll.questions.forEach((q, i) => {
+            const card = document.createElement('div');
+            card.className = 'gf-card';
+            let html = `<h3>${q.title}</h3><div class="gf-options">`;
             if (q.type === 'radio') {
-                q.options.forEach(opt => {
-                    html += `
-                        <label style="display: block; margin-bottom: 0.5rem; font-weight: normal; cursor: pointer;">
-                            <input type="radio" name="q_${qIndex}" value="${opt}" style="width: auto; margin-right: 0.5rem;">
-                            ${opt}
-                        </label>
-                    `;
-                });
+                q.options.forEach(opt => { html += `<label><input type="radio" name="q_${i}" value="${opt}"> ${opt}</label>`; });
             } else {
-                html += `<textarea name="q_${qIndex}" rows="3" placeholder="Введите ваш ответ..." style="width: 100%; resize: vertical;"></textarea>`;
+                html += `<textarea name="q_${i}" rows="3" placeholder="Ваш ответ..."></textarea>`;
             }
-
-            div.innerHTML = html;
-            container.appendChild(div);
+            card.innerHTML = html + `</div>`;
+            container.appendChild(card);
         });
-
-        this.initTimer();
+        
+        this.startTimer();
         document.getElementById('btn-submit-vote').onclick = () => this.submitVote();
     },
 
-    initTimer() {
+    startTimer() {
         clearInterval(State.timerInterval);
-        const timerSpan = document.getElementById('time-left');
-
         State.timerInterval = setInterval(() => {
-            const distance = State.currentPoll.deadline - Date.now();
-
-            if (distance <= 0) {
+            const diff = State.currentPoll.deadline - Date.now();
+            if (diff <= 0) {
                 clearInterval(State.timerInterval);
-                timerSpan.innerText = "ВРЕМЯ ИСТЕКЛО";
-                document.getElementById('poll-questions').classList.add('disabled-layer');
-                document.getElementById('btn-submit-vote').disabled = true;
+                document.getElementById('time-left').innerText = "ЗАВЕРШЕНО";
+                document.getElementById('poll-questions').style.opacity = '0.5';
+                document.getElementById('poll-questions').style.pointerEvents = 'none';
                 return;
             }
-
-            const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-            const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-
-            const pad = (num) => String(num).padStart(2, '0');
-            timerSpan.innerText = `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+            const h = String(Math.floor((diff / (1000 * 60 * 60)) % 24)).padStart(2, '0');
+            const m = String(Math.floor((diff / 1000 / 60) % 60)).padStart(2, '0');
+            const s = String(Math.floor((diff / 1000) % 60)).padStart(2, '0');
+            document.getElementById('time-left').innerText = `${h}:${m}:${s}`;
         }, 1000);
     },
 
     async submitVote() {
         const answers = {};
-        let allAnswered = true;
-
-        State.currentPoll.questions.forEach((q, qIndex) => {
-            if (q.type === 'radio') {
-                const checked = document.querySelector(`input[name="q_${qIndex}"]:checked`);
-                if (!checked) allAnswered = false;
-                answers[`q_${qIndex}`] = checked ? checked.value : null;
-            } else {
-                const textVal = document.querySelector(`textarea[name="q_${qIndex}"]`).value.trim();
-                if (!textVal) allAnswered = false;
-                answers[`q_${qIndex}`] = textVal;
-            }
+        State.currentPoll.questions.forEach((q, i) => {
+            const input = q.type === 'radio' ? document.querySelector(`input[name="q_${i}"]:checked`) : document.querySelector(`textarea[name="q_${i}"]`);
+            answers[`q_${i}`] = input ? input.value : null;
         });
-
-        if (!allAnswered) {
-            if (!confirm('Вы заполнили не все вопросы. Всё равно отправить бюллетень?')) return;
-        }
 
         const res = await fetch('/api/voter/vote', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                pollId: State.currentPoll.id,
-                iin: State.voterIin,
-                answers: answers
-            })
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pollId: State.currentPoll.id, iin: State.voterIin, answers })
         });
-
-        if (res.ok) {
-            alert('Ваш голос успешно зафиксирован в системе.');
-            window.location.reload();
-        } else {
-            alert((await res.json()).error || 'Ошибка отправки бюллетеня');
-        }
+        if (res.ok) { alert('Голос учтен'); window.location.reload(); }
+        else alert((await res.json()).error);
     }
 };
 
-// Запуск при полной загрузке DOM-структуры
-document.addEventListener('DOMContentLoaded', () => {
-    AuthModule.init();
-    AdminModule.init();
-});
+document.addEventListener('DOMContentLoaded', () => { AuthModule.init(); AdminModule.init(); });
