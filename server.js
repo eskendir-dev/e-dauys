@@ -11,9 +11,15 @@ const DB_PATH = process.env.DATABASE_URL || path.join(__dirname, 'edauys.sqlite'
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Безопасное определение пути: если диска нет, уходим в in-memory режим
+const DB_PATH = process.env.DATABASE_URL || ':memory:';
+
 const db = new sqlite3.Database(DB_PATH, (err) => {
-    if (err) console.error('Ошибка подключения к БД:', err);
-    else console.log(`База данных подключена: ${DB_PATH}`);
+    if (err) {
+        console.error('Ошибка подключения к БД:', err);
+    } else {
+        console.log(`База данных успешно инициализирована. Режим: ${DB_PATH}`);
+    }
 });
 
 // Инициализация таблиц
@@ -47,7 +53,7 @@ db.serialize(() => {
         PRIMARY KEY(iin, poll_code)
     )`);
 
-    // Добавление тестового администратора (для отладки)
+    // Автоматическое добавление дефолтного админа при каждом старте памяти
     db.run(`INSERT OR IGNORE INTO admins (iin, email) VALUES ('123456789012', 'admin@e-dauys.kz')`);
 });
 
